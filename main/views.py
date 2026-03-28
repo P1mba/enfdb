@@ -13,7 +13,7 @@ class IndexView(TemplateView):
         context = super().get_context_data(**kwargs)
         context['categories'] = Category.objects.all()
         context['current_category'] = None
-        return 
+        return context
 
     def get(self, request, *args, **kwargs):
         context = self.get_context_data(**kwargs)
@@ -27,7 +27,7 @@ class CatalogView(TemplateView):
         'color': lambda queryset, value: queryset.filter(color__iexact=value),
         'min_price': lambda queryset, value: queryset.filter(price__gte=value),
         'max_price': lambda queryset, value: queryset.filter(price__lte=value),
-        'size': lambda queryset, value: queryset.filter(product_sizes__size__name=value),
+        'size': lambda queryset, value: queryset.filter(product_size__size__name=value),
     }
 
     def get_context_data(self, **kwargs):
@@ -75,8 +75,31 @@ class CatalogView(TemplateView):
         return context
     
     def get(self, request, *args, **kwargs):
+        # self.object = self.get_object()
+        context = self.get_context_data(**kwargs)
+        if request.headers.get('HX-Request'):
+            return TemplateResponse(request, 'main/catalog.html', context)
+        return TemplateResponse(request, self.template_name, context)
+
+class ProductDetailView(DetailView):
+    model = Product
+    template_name = 'main/product_detail.html'
+    context_object_name = 'product'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['categories'] = Category.objects.all()
+        context['current_category'] = self.object.category.slug
+        context['sizes'] = self.object.product_size.select_related('size').all()
+        return context
+
+    def get(self, request, *args, **kwargs):
         self.object = self.get_object()
         context = self.get_context_data(**kwargs)
         if request.headers.get('HX-Request'):
             return TemplateResponse(request, 'main/product_detail.html', context)
-        raise TemplateResponse(request, self.template_name, context)
+        return TemplateResponse(request, self.template_name, context)
+    
+class SearchInputView(TemplateView):
+    def get(self, request, *args, **kwargs):
+        return TemplateResponse(request, 'main/search_input.html', {})
